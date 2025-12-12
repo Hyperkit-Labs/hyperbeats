@@ -62,9 +62,9 @@ export function ApiDocs() {
             API Reference
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Simple REST API for generating charts and fetching metrics.
+            Simple REST API for generating charts and fetching metrics.{" "}
             <Button variant="link" className="text-cyan-400 hover:text-cyan-300 ml-1 h-auto p-0" asChild>
-              <Link href="https://beats.hyperionkit.xyz/docs" target="_blank">
+              <Link href="/api">
                 Full Documentation <ExternalLink className="w-3 h-3 ml-1" />
               </Link>
             </Button>
