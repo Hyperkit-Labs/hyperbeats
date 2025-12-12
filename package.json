@@ -1,0 +1,54 @@
+{
+  "name": "hyperbeats",
+  "version": "1.0.0",
+  "description": "Real-time activity monitoring and visualization for blockchain ecosystems",
+  "private": true,
+  "scripts": {
+    "dev": "docker-compose up",
+    "dev:build": "docker-compose up --build",
+    "start": "docker-compose -f docker-compose.prod.yml up -d",
+    "stop": "docker-compose down",
+    "logs": "docker-compose logs -f hyperbeats",
+    "test": "pytest tests/ -v",
+    "test:unit": "pytest tests/unit/ -v",
+    "test:integration": "pytest tests/integration/ -v",
+    "test:cov": "pytest tests/ -v --cov=backend --cov-report=html",
+    "lint": "ruff check backend/",
+    "lint:fix": "ruff check backend/ --fix",
+    "format": "black backend/ tests/",
+    "format:check": "black backend/ tests/ --check",
+    "typecheck": "mypy backend/",
+    "ci": "npm run lint && npm run format:check && npm run test:unit",
+    "commit": "node version/scripts/parallel-commit.js",
+    "commit:dry": "node version/scripts/parallel-commit.js --dry-run",
+    "commit:sh": "bash version/scripts/parallel-commit.sh",
+    "commit:sh:dry": "bash version/scripts/parallel-commit.sh --dry-run",
+    "commit:all": "git add -A && git commit",
+    "commit:auto": "bash version/scripts/parallel-commit.sh --max 3",
+    "status": "git status",
+    "changes": "git status --porcelain",
+    "staged": "git diff --cached --name-only",
+    "deploy": "bash scripts/deploy-oracle-free.sh",
+    "db:migrate": "alembic upgrade head",
+    "db:rollback": "alembic downgrade -1",
+    "health": "curl -sf http://localhost:8000/health || echo 'API not running'"
+  },
+  "keywords": [
+    "hyperbeats",
+    "analytics",
+    "visualization",
+    "blockchain",
+    "metrics",
+    "charts",
+    "github"
+  ],
+  "author": "Hyperkit Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hyperkit-Labs/hyperbeats.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
