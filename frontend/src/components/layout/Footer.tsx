@@ -37,7 +37,7 @@ export function Footer() {
                 </Link>
               </Button>
               <Button variant="ghost" size="icon" className="hover:text-white hover:bg-white/10 rounded-full" asChild>
-                <Link href="https://twitter.com/hyperionkit" target="_blank">
+                <Link href="https://x.com/hyperkitlabs" target="_blank">
                   <Twitter className="w-5 h-5" />
                 </Link>
               </Button>
@@ -91,6 +91,22 @@ export function Footer() {
               <li>
                 <Link href="/status" className="text-sm hover:text-cyan-400 transition-colors">
                   Status
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-6 tracking-wider uppercase">Legal</h3>
+            <ul className="space-y-4">
+              <li>
+                <Link href="/privacy" className="text-sm hover:text-cyan-400 transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-sm hover:text-cyan-400 transition-colors">
+                  Terms of Service
                 </Link>
               </li>
             </ul>
