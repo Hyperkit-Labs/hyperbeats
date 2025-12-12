@@ -23,7 +23,10 @@ export function Header() {
   const navLinks = [
     { href: "#features", label: "Features" },
     { href: "#embed", label: "Embed" },
-    { href: "#api", label: "API Docs" },
+    { href: "/docs", label: "Docs" },
+    { href: "/api", label: "API" },
+    { href: "/changelog", label: "Changelog" },
+    { href: "/status", label: "Status" },
   ];
 
   return (
