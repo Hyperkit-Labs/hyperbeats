@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "docker-compose up",
     "dev:build": "docker-compose up --build",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
     "start": "docker-compose -f docker-compose.prod.yml up -d",
+    "start:frontend": "cd frontend && npm run start",
     "stop": "docker-compose down",
     "logs": "docker-compose logs -f hyperbeats",
     "test": "pytest tests/ -v",
