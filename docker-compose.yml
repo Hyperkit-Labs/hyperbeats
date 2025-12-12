@@ -1,0 +1,172 @@
+# Hyperbeats Docker Compose
+# Optimized for Oracle Cloud Free Tier ($0/month)
+# VM.Standard.A1.Flex: 4 OCPU, 24GB RAM available
+
+version: "3.8"
+
+services:
+  # ===========================================
+  # HYPERBEATS API (Primary Service)
+  # ===========================================
+  hyperbeats:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hyperbeats-api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DEBUG=${DEBUG:-false}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379/0
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - SECRET_KEY=${SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - R2_BUCKET=${R2_BUCKET:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend:ro
+      - chart_cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # ===========================================
+  # POSTGRESQL DATABASE
+  # ===========================================
+  # For local dev. In production, use Oracle Autonomous DB
+  postgres:
+    image: postgres:15-alpine
+    container_name: hyperbeats-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-hyperbeats}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hyperbeats}
+      - POSTGRES_DB=${POSTGRES_DB:-hyperbeats}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hyperbeats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  # ===========================================
+  # REDIS CACHE
+  # ===========================================
+  # Self-hosted on Oracle VM - use available RAM
+  redis:
+    image: redis:7-alpine
+    container_name: hyperbeats-cache
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 8gb 
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 10G
+        reservations:
+          memory: 4G
+
+  # ===========================================
+  # PROMETHEUS (Monitoring)
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hyperbeats-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - hyperbeats
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  # ===========================================
+  # GRAFANA (Dashboards)
+  # ===========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hyperbeats-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-hyperbeats}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_URL:-http://localhost:3001}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  chart_cache:
+    driver: local
+
+networks:
+  default:
+    name: hyperbeats-network
+    driver: bridge
