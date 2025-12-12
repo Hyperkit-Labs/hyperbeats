@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "cd frontend && npm install",
-  "framework": "nextjs"
+  "buildCommand": "npm install && npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "rootDirectory": "frontend"
 }
