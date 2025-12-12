@@ -1,0 +1,199 @@
+# Hyperbeats Production Docker Compose
+# Oracle Cloud Free Tier + Cloudflare
+# $0/month deployment
+
+version: "3.8"
+
+services:
+  # ===========================================
+  # HYPERBEATS API
+  # ===========================================
+  # Connects to external Oracle Autonomous DB
+  hyperbeats:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hyperbeats-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Application
+      - APP_ENV=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      
+      # Database (Oracle Autonomous DB - FREE)
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Cache (Local Redis)
+      - REDIS_URL=redis://redis:6379/0
+      
+      # GitHub API
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      
+      # Cloudflare R2 (FREE)
+      - R2_BUCKET=${R2_BUCKET}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - CDN_BASE_URL=${CDN_BASE_URL}
+      
+      # Cloudflare
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - chart_cache:/app/cache
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ===========================================
+  # REDIS CACHE (Self-hosted - FREE)
+  # ===========================================
+  # Optimized for Oracle A1.Flex 24GB RAM
+  redis:
+    image: redis:7-alpine
+    container_name: hyperbeats-cache
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 12gb 
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --tcp-keepalive 300
+      --timeout 0
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 14G
+        reservations:
+          memory: 8G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ===========================================
+  # PROMETHEUS (Monitoring)
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hyperbeats-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=90d"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  # ===========================================
+  # GRAFANA (Dashboards)
+  # ===========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hyperbeats-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_URL}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===========================================
+  # NGINX REVERSE PROXY (Optional)
+  # ===========================================
+  # Use if not using Cloudflare proxy
+  nginx:
+    image: nginx:alpine
+    container_name: hyperbeats-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - hyperbeats
+    restart: always
+    profiles:
+      - with-nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+volumes:
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  chart_cache:
+    driver: local
+
+networks:
+  default:
+    name: hyperbeats-prod
+    driver: bridge
+
