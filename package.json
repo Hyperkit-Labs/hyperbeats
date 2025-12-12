@@ -4,6 +4,7 @@
   "description": "Real-time activity monitoring and visualization for blockchain ecosystems",
   "private": true,
   "scripts": {
+    "vercel-build": "cd frontend && npm install && npm run build",
     "dev": "docker-compose up",
     "dev:build": "docker-compose up --build",
     "dev:frontend": "cd frontend && npm run dev",
@@ -53,5 +54,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "next": "^16.0.10"
   }
 }
